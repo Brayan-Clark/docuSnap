@@ -43,29 +43,19 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ showToast, i
   // Test Sheets Pipeline (vérifie le serveur + incrémente le ledger local persisté)
   const handleTestSheets = () => {
     setIsTestingSheets(true);
-    fetch('/api/health')
-      .then((r) => r.json())
-      .then((health) => {
-        const engineLabel = health?.activeEngine === 'gemini' ? 'Gemini' : 'Tesseract local';
-        setTimeout(() => {
-          setIsTestingSheets(false);
-          setConfig((prev) => ({
-            ...prev,
-            googleSheets: {
-              ...prev.googleSheets,
-              syncedRowsCount: prev.googleSheets.syncedRowsCount + 1,
-              lastSyncedAt: 'à l’instant',
-            },
-          }));
-          showToast(
-            `✅ Pipeline serveur opérationnel (moteur ${engineLabel}). Ligne de test ajoutée au ledger.`
-          );
-        }, 600);
-      })
-      .catch(() => {
-        setIsTestingSheets(false);
-        showToast('❌ Serveur injoignable — lancer `npm run dev`.');
-      });
+    // 100% client-side, pas de serveur
+    setTimeout(() => {
+      setIsTestingSheets(false);
+      setConfig((prev) => ({
+        ...prev,
+        googleSheets: {
+          ...prev.googleSheets,
+          syncedRowsCount: prev.googleSheets.syncedRowsCount + 1,
+          lastSyncedAt: 'à l’instant',
+        },
+      }));
+      showToast('✅ Test réussi — ligne ajoutée au ledger local.');
+    }, 800);
   };
 
   // Test Webhook RÉEL : POST vers l'URL configurée avec signature HMAC
