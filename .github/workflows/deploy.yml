@@ -43,6 +43,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
+          DEPLOY_TARGET: pages
           # Les secrets GitHub Actions → variables Vite côté client
           VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
           VITE_OPENROUTER_API_KEY: ${{ secrets.VITE_OPENROUTER_API_KEY }}
