@@ -7,7 +7,6 @@ import {
 } from '../types';
 import { PRESET_RECEIPTS } from '../data/mockData';
 import { useEngineStatus } from '../hooks/useEngineStatus';
-import { usePlan } from '../hooks/usePlan';
 import { geminiParseReceipt } from '../api/geminiClient';
 import { config } from '../config';
 import { 
@@ -115,10 +114,9 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
         source = 'preset-data';
       }
       // --- 2) Gemini direct depuis le navigateur (si clé configurée) ---
-      else if (config.geminiApiKey || (usePlan as any)?.userGeminiKey) {
+      else if (config.geminiApiKey) {
         try {
-          const geminiKey = (usePlan as any)?.userGeminiKey || config.geminiApiKey;
-          const result = await geminiParseReceipt(imageUrl, geminiKey);
+          const result = await geminiParseReceipt(imageUrl, config.geminiApiKey);
           if (result) {
             extracted = result.data;
             source = `gemini:${result.model}`;
