@@ -1,0 +1,6 @@
+{
+  "name": "DocuSnap AI",
+  "description": "Automated AI receipt & invoice OCR parsing platform for B2B expense management with WhatsApp Assistant and live integrations. Fonctionne sans clé API grâce à un moteur OCR local gratuit (Tesseract.js), avec bascule automatique vers Gemini Vision si une clé est configurée.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

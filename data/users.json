@@ -1,0 +1,10 @@
+[
+  {
+    "id": "usr-admin-001",
+    "email": "admin@docusnap.ai",
+    "passwordHash": "a7a730536b89b19b149cbc5aebdf6a51:add87c602c3b72019d13f2a642860c1d001ee82a2692042fc40d5735dfea1070e54ca5b9de2ce44c4cda53f001fd3b7ba7f66a0b31da8ade603306328fd0159b",
+    "plan": "pro",
+    "planActivatedAt": "2026-08-04T15:19:30.633Z",
+    "createdAt": "2026-08-04T15:19:30.634Z"
+  }
+]
