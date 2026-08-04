@@ -138,6 +138,7 @@ export function App() {
         loading={auth.loading}
         error={auth.error}
         onClearError={() => auth.setError(null)}
+        onBack={() => setShowAuth(false)}
       />
     );
   }

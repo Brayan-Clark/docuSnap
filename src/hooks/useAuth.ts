@@ -7,13 +7,12 @@ interface AuthUser {
   createdAt?: string;
 }
 
-const TOKEN_KEY = 'docusnap.token.v1';
-const USER_KEY = 'docusnap.user.v1';
+const USERS_KEY = 'docusnap.users.v1'; // liste d'utilisateurs en localStorage
+const USER_KEY = 'docusnap.user.v1';   // utilisateur courant
 
 /**
- * Gestion de l'authentification (JWT + localStorage).
- * L'utilisateur peut utiliser l'app sans compte (mode démo),
- * mais un compte est requis pour le plan Pro.
+ * Auth 100% client-side (localStorage) + serveur optionnel.
+ * Fonctionne sur GitHub Pages SANS backend.
  */
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(() => {
@@ -23,96 +22,146 @@ export function useAuth() {
     } catch { return null; }
   });
 
-  const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem(TOKEN_KEY);
-  });
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Persister token + user
-  useEffect(() => {
-    if (token) localStorage.setItem(TOKEN_KEY, token);
-    else localStorage.removeItem(TOKEN_KEY);
-  }, [token]);
-
+  // Persister l'utilisateur
   useEffect(() => {
     if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
     else localStorage.removeItem(USER_KEY);
   }, [user]);
 
-  // Vérifier le token au montage
-  useEffect(() => {
-    if (!token) return;
-    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.user) setUser(data.user);
-        else { setToken(null); setUser(null); }
-      })
-      .catch(() => { setToken(null); setUser(null); });
-  }, []);
+  // ── Helpers localStorage ──────────────────────────────────────────────────
+  const getUsers = (): Record<string, { email: string; password: string; plan: string; id: string; createdAt?: string }> => {
+    try { return JSON.parse(localStorage.getItem(USERS_KEY) || '{}'); } catch { return {}; }
+  };
 
+  const saveUsers = (users: Record<string, any>) => {
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  };
+
+  const simpleHash = (s: string): string => {
+    let hash = 0;
+    for (let i = 0; i < s.length; i++) {
+      const ch = s.charCodeAt(i);
+      hash = ((hash << 5) - hash) + ch;
+      hash |= 0;
+    }
+    return 'h_' + Math.abs(hash).toString(36);
+  };
+
+  // ── Register ──────────────────────────────────────────────────────────────
   const register = useCallback(async (email: string, password: string) => {
     setLoading(true); setError(null);
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erreur inscription');
-      setToken(data.token);
-      setUser(data.user);
+      // Essayer le serveur d'abord
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+          signal: AbortSignal.timeout(3000),
+        });
+        const data = await res.json();
+        if (res.ok && data.user) {
+          setUser(data.user);
+          setLoading(false);
+          return true;
+        }
+      } catch { /* serveur indisponible → mode local */ }
+
+      // Mode local (GitHub Pages ou serveur indisponible)
+      const users = getUsers();
+      const key = email.toLowerCase().trim();
+
+      if (users[key]) {
+        throw new Error('Un compte existe déjà avec cet email.');
+      }
+
+      const newUser: AuthUser = {
+        id: 'usr-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+        email: key,
+        plan: 'free',
+        createdAt: new Date().toISOString(),
+      };
+
+      users[key] = { ...newUser, password: simpleHash(password) };
+      saveUsers(users);
+      setUser(newUser);
       return true;
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Erreur inscription');
       return false;
     } finally { setLoading(false); }
   }, []);
 
+  // ── Login ─────────────────────────────────────────────────────────────────
   const login = useCallback(async (email: string, password: string) => {
     setLoading(true); setError(null);
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erreur connexion');
-      setToken(data.token);
-      setUser(data.user);
+      // Essayer le serveur d'abord
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+          signal: AbortSignal.timeout(3000),
+        });
+        const data = await res.json();
+        if (res.ok && data.user) {
+          setUser(data.user);
+          setLoading(false);
+          return true;
+        }
+      } catch { /* serveur indisponible → mode local */ }
+
+      // Mode local
+      const users = getUsers();
+      const key = email.toLowerCase().trim();
+      const stored = users[key];
+
+      if (!stored || stored.password !== simpleHash(password)) {
+        throw new Error('Email ou mot de passe incorrect.');
+      }
+
+      setUser({ id: stored.id, email: stored.email, plan: stored.plan as 'free' | 'pro', createdAt: stored.createdAt });
       return true;
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Erreur connexion');
       return false;
     } finally { setLoading(false); }
   }, []);
 
+  // ── Logout ────────────────────────────────────────────────────────────────
   const logout = useCallback(() => {
-    setToken(null);
     setUser(null);
-    localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
   }, []);
 
-  /** Met à jour le plan côté serveur + local. */
+  // ── Update plan ───────────────────────────────────────────────────────────
   const updatePlan = useCallback(async (plan: 'free' | 'pro') => {
-    if (!token) return;
-    try {
-      const res = await fetch('/api/auth/plan', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ plan }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
-      }
-    } catch { /* silencieux */ }
-  }, [token]);
+    if (!user) return;
+    // Mettre à jour en local
+    const updated = { ...user, plan };
+    setUser(updated);
 
-  return { user, token, loading, error, isLoggedIn: !!token && !!user, register, login, logout, updatePlan, setError };
+    // Essayer le serveur
+    try {
+      await fetch('/api/auth/plan', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan }),
+        signal: AbortSignal.timeout(3000),
+      });
+    } catch { /* silencieux */ }
+
+    // Mettre à jour dans la liste des users
+    const users = getUsers();
+    if (users[user.email]) {
+      users[user.email].plan = plan;
+      saveUsers(users);
+    }
+  }, [user]);
+
+  return { user, loading, error, isLoggedIn: !!user, register, login, logout, updatePlan, setError };
 }

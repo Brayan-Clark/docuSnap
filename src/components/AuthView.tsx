@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Scan, Mail, Lock, LogIn, UserPlus, AlertCircle, Sparkles } from 'lucide-react';
+import { Scan, Mail, Lock, LogIn, UserPlus, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 interface AuthViewProps {
   mode: 'login' | 'register';
@@ -8,6 +8,7 @@ interface AuthViewProps {
   loading: boolean;
   error: string | null;
   onClearError: () => void;
+  onBack?: () => void;
 }
 
 export const AuthView: React.FC<AuthViewProps> = ({
@@ -17,9 +18,11 @@ export const AuthView: React.FC<AuthViewProps> = ({
   loading,
   error,
   onClearError,
+  onBack,
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,6 +33,17 @@ export const AuthView: React.FC<AuthViewProps> = ({
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
+        {/* Bouton retour */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Retour à l'application
+          </button>
+        )}
+
         {/* Branding */}
         <div className="text-center space-y-3">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-600 via-teal-500 to-emerald-400 p-0.5 mx-auto shadow-lg shadow-cyan-500/20">
@@ -75,15 +89,24 @@ export const AuthView: React.FC<AuthViewProps> = ({
             <label className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 mb-1.5">
               <Lock className="w-3.5 h-3.5 text-cyan-400" /> Mot de passe
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); onClearError(); }}
-              placeholder={mode === 'register' ? '6 caractères minimum' : '••••••••'}
-              required
-              minLength={6}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); onClearError(); }}
+                placeholder={mode === 'register' ? '6 caractères minimum' : '••••••••'}
+                required
+                minLength={6}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 pr-10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           {/* Submit */}
